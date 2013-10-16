@@ -109,6 +109,10 @@ https://github.com/elasticsearch/elasticsearch-servicewrapper
 Elastic HQ，elasticsearch的监控工具  
 http://www.elastichq.org  
 
+suggest插件  
+https://github.com/spinscale/elasticsearch-suggest-plugin  
+
+
 elasticsearch-rtf，针对中文集成了相关插件(rtf = Ready To Fly)  
 https://github.com/medcl/elasticsearch-rtf  
 [作者主页](http://log.medcl.net)
@@ -234,7 +238,7 @@ install_server.sh在问你几个问题后会把redis安装为开机启动的服�
 elasticsearch解压即可使用非常方便，接下来我们看一下效果，首先启动ES服务，切换到elasticsearch目录，运行bin下的elasticsearch
 
 	cd /search/elasticsearch/elasticsearch-0.90.5 
-	bin/elasticsearch -f
+	bin/elasticsearch -f &
 
 访问默认的9200端口
 
@@ -391,4 +395,8 @@ elasticsearch 优化
 * [fluentd](http://fluentd.org)
 * [nxlog](http://nxlog-ce.sourceforge.net)  
 
+demo
+===
 
+* [logstash parse iis log](https://github.com/sdming/document/blob/master/lek/iis-log.conf)  
+* [logstash parse windows event log](https://github.com/sdming/document/blob/master/lek/event-log.conf)    
