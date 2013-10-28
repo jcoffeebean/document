@@ -112,7 +112,6 @@ http://www.elastichq.org
 suggest插件  
 https://github.com/spinscale/elasticsearch-suggest-plugin  
 
-
 elasticsearch-rtf，针对中文集成了相关插件(rtf = Ready To Fly)  
 https://github.com/medcl/elasticsearch-rtf  
 [作者主页](http://log.medcl.net)
