@@ -3,8 +3,6 @@ modules
 
 模块
 
-----------
-
 cluster
 ==
 
@@ -130,7 +128,7 @@ shard allocation filtering
 
 我们可以把配置项`index.routing.allocation.include.tag`设置为value1,value2来使创建的索引只部署到哪些tag属性为value1和value2的节点上，例如
 
-```json
+```
 curl -XPUT localhost:9200/test/_settings -d '{
       "index.routing.allocation.include.tag" : "value1,value2"
 }'
@@ -138,7 +136,7 @@ curl -XPUT localhost:9200/test/_settings -d '{
 
 另一方面， 我们将配置项`index.routing.allocation.exclude.tag`设置为value3， 这样创建的索引会被部署到tag属性为value3之外的那些节点上，例如
 
-```json
+```
 curl -XPUT localhost:9200/test/_settings -d '{
       "index.routing.allocation.exclude.tag" : "value3"
 }'
@@ -179,7 +177,6 @@ curl -XPUT localhost:9200/_cluster/settings -d '{
 }'
 ```
 
-----------
 
 discovery
 ==
@@ -279,7 +276,7 @@ external multicast
 
 multicast 发现机制还支持外部多播请求，外部客户端可以发送多播请求， 格式为：
 
-```json
+```
 {
     "request" : {
         "cluster_name": "test_cluster"
@@ -289,7 +286,7 @@ multicast 发现机制还支持外部多播请求，外部客户端可以发送�
 
 响应格式类似节点信息的响应(只有节点信息，包括transport/http地址以及节点的属性):
 
-```json
+```
 {
     "response" : {
         "cluster_name" : "test_cluster",
@@ -304,7 +301,6 @@ multicast 发现机制还支持外部多播请求，外部客户端可以发送�
 
 注意，可以禁用内部multicast发现机制，只启用外部多播发现机制。 方式为将`discovery.zen.ping.multicast.enabled`设为true（默认），但是将`discovery.zen.ping.multicast.ping.enabled`设为false。
 
-------------------
 
 gateway
 ==
@@ -377,7 +373,6 @@ s3 gateway
 
 s3 gateway以后会被移除， 不看了。
 
-----------
 
 http
 ==
@@ -410,7 +405,6 @@ disable http
 
 设置`http.enabled`为false可以禁用http模块，比如创建非数据节点来接收http请求，这些节点利用内部的transport来和数据节点通信。
 
-----------
 
 indices
 ==
@@ -460,14 +454,11 @@ recovery
 | indices.store.throttle.max_bytes_per_sec  | 默认20mb								|
 
 
-----------
 
 jmx
 ==
 
 removed as of v0.90.  
-
-----------
 
 memcached
 ==
@@ -515,8 +506,6 @@ disable memcached
 ===
 
 设置`memcached.enabled`为false可以禁用memcached模块， 默认检测到该插件即启用memcached模块。  
-
-----------
 
 network settings
 ==
@@ -573,7 +562,6 @@ tcp settings
 | network.tcp.receive_buffer_size 	| tcp接收缓冲区的大小。 默认不设置	 		|
 
 
-----------
 
 node
 ==
@@ -591,7 +579,6 @@ ES可以设置一个节点是否在本地存储数据，存储数据意味着不
 这样数据节点可以专注于索引和查询这类大负载的工作，而不需要处理http请求， 占用网络负载，或者执行gather过程。   
 
 
-----------
 
 plugins
 ==
@@ -685,23 +672,18 @@ bin/plugin --install mobz/elasticsearch-head --verbose
 plugin --remove head --silent
 ```
 
-----------
-
 scripting
 ==
 
-----------
 
 thread pool
 ==
 
 
-----------
 
 thrift
 ==
 
-----------
 
 transport
 ==

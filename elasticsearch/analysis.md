@@ -9,7 +9,7 @@ ES内置了很多Analyzer, 还有很多第三方的Analyzer插件， 比如一�
 
 analyzer、 tokenizer、 filter可以在elasticsearch.yml 配置， 下面是配置例子
 
-```json
+```
 index :
     analysis :
         analyzer :
@@ -48,7 +48,7 @@ analyzer
 
 ES内置若干analyzer, 另外还可以用内置的character filter, tokenizer, token filter组装一个analyzer(custom analyzer)， 比如
 
-```json
+```
 index :
     analysis :
         analyzer :
@@ -59,7 +59,7 @@ index :
 
 如果你要使用第三方的analyzer插件，需要先在配置文件elasticsearch.yml中注册, 下面是配置IkAnalyzer的例子
 
-```json
+```
 index:
   analysis:
     analyzer:      
@@ -71,7 +71,7 @@ index:
 
 当一个analyzer在配置文件中被注册到一个名字(logical name)下后，在mapping定义或者一些API里就可以用这个名字来引用该analyzer了，比如
 
-```json
+```
 "message": {
     "type": "string",
     "indexAnalyzer": "ik",
@@ -85,7 +85,7 @@ index:
 
 下面是在elasticsearch.yml中配置默认analyzer的例子
 
-```json
+```
 index:
   analysis:
     analyzer:
@@ -98,14 +98,14 @@ index:
 ```
 或者用这种格式
 
-```json
+```
 index.analysis.analyzer.default.type : "mmseg"
 
 ```
 
 一个analyzer可以起若干别名，比如在下面的例子中，standard analyzer可以用alias1或者alias2来引用
 
-```json
+```
 index :
   analysis :
     analyzer。 :
