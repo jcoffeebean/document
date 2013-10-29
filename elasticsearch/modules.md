@@ -578,8 +578,6 @@ ES可以设置一个节点是否在本地存储数据，存储数据意味着不
  
 这样数据节点可以专注于索引和查询这类大负载的工作，而不需要处理http请求， 占用网络负载，或者执行gather过程。   
 
-
-
 plugins
 ==
 
@@ -675,15 +673,244 @@ plugin --remove head --silent
 scripting
 ==
 
+scripting模块可以用脚本来执行自定义表达式， 比如可以用脚本将"script fields"作为查询的一部分返回， 或者用来计算某个查询的自定义评分等。  
+
+脚本模块默认用扩展过的[mvel](http://mvel.codehaus.org/)作为脚本语言， 之所以用是因为它非常快而且用起来很简单， 大多数情况下需要的是简单的表达式(比如数学方程式)。  
+
+其他`lang`插件可以提供执行不同语言脚本的能力， 目前支持的脚本插件有javascript的`lang-javascript`，Groovy的`lang-groovy`， Python的`lang-python`。 所有可以用`script`参数的地方可以设置`lang`参数来定义脚本所用的语言。 `lang`的选项可以是`mvel`, `js`, `groovy`, `python`, 和`native`。  
+
+default scripting language
+===
+
+默认的脚本语言是(如果没有指定`lang`参数)`mvel`。 如果要修改默认语言的话可以将设置`script.default_lang`为合适的语言。  
+
+preloaded scripts
+===
+
+脚本可以作为相关api的一部分， 也可以将脚本放到`config/scripts`来预加载这些脚本， 这样用到这些脚本的地方可以直接引用脚本的名字而不用提供整个脚本， 这有助于减少客户端和节点间的传输的数据量。  
+
+脚本的名字从其所在的目录结构继承，不需要带文件名的后缀， 例如被放在`config/scripts/group1/group2/test.py`的脚本会被命名为group1_group2_test。  
+
+disabling dynamic scripts
+===
+
+建议ES运行在某个应用或者代理的后端，这样可以将ES和外部隔离， 如果用户被授权运行动态脚本(即使在search请求)，那么他们就可以访问ES所在的机器。  
+
+首先， 你不应该用`root`用户来运行ES, 因为这样会允许脚本在你的服务器上没有限制的做任何事， 其次你不应该直接将ES暴露给用户访问， 如果你打算直接将ES暴露给用户， 你必须决定是否足够信任他们在你的服务器上运行脚本。 如果答案是不的话, 即使你有个代理仅允许GET请求， 你也应该在每个节点的`config/elasticsearch.yml`加入如下设置来禁用动态脚本:  
+
+```
+script.disable_dynamic: true
+```
+
+这样可以仅允许配置过的命名脚本或者通过插件注册的原生Java脚本运行， 防止用户通过接口来运行任意脚本。  
+
+native (java) scripts
+===
+
+即使`mvel`已经相当快了，注册的原生java脚本还能执行的更快。  
+
+实现`NativeScriptFactory`接口的脚本才会被执行。 主要有两种形式，一种是扩展`AbstractExecutableScript`，一种是扩展`AbstractSearchScript`(可能大多数用户会选择这种方式, 可以借助`AbstractLongSearchScript`, `AbstractDoubleSearchScript`, `AbstractFloatSearchScript`这几个辅助类来实现扩展)。
+
+可以通过配置来注册脚本， 例如：`script.native.my.type`设为`sample.MyNativeScriptFactory`将注册一个名为my的脚本。 另一个途径是插件中访问`ScriptModule`的`registerScript`方法注册脚本。  
+
+设置`lang`为`native`并且提供脚本的名字就可以执行注册的脚本。  
+
+注意， 脚本需要位于ES的classpath下， 一个简单方法是在plugins目录下创建一个目录(选择一个描述性的名字)，将jar/classes文件放在这个目录，他们就会被自动加载。  
+
+score
+===
+
+所有的脚本都可以在facets中使用, 可以通过`doc.score`访问当前文档的评分。  
+
+document fields
+===
+
+大多数脚本都会用到document的字段， `doc['field_name']`可以用来访问document中的某个字段(document通常通过脚本的上下文传给脚本)。 访问document的字段非常快， 因为他们会被加载到内存中(所有相关的字段值/token会被加载到内存中)。  
+
+下表是能够从字段上拿到的数据：
+
+| Expression       				| Description   											|
+| ------------------------------|:----------------------------------------------------------|
+| doc['field_name'].value   	| 字段的原生值， 比如，如果是字段short类型，就返回short类型的值	|
+| doc['field_name'].values  	| 字段的原生值的数组， 比如，如果字段是short类型，就返回short[]类型的数组。 记住，单个文档中的一个字段可以有好几个值，如果字段没有值就返回空数组 |
+| doc['field_name'].empty   	| boolean值， 表明文档的字段是否有值 							|
+| doc['field_name'].multiValued | boolean值， 表明文档的字段是否有多个值 						|
+| doc['field_name'].lat 		| geo point类型的维度值				 						|
+| doc['field_name'].lon 		| geo point类型的经度值				 						|
+| doc['field_name'].lats 		| geo point类型的维度数组				 						|
+| doc['field_name'].lons 		| geo point类型的经度数组				 						|
+| doc['field_name'].distance(lat, lon)			| geo point类型的字段到给定坐标的plane距离(单位是miles)|
+| doc['field_name'].arcDistance(lat, lon)		| geo point类型的字段到给定坐标的arc距离(单位是miles)	|
+| doc['field_name'].distanceInKm(lat, lon)		| geo point类型的字段到给定坐标的plane距离(单位是km)	|
+| doc['field_name'].arcDistanceInKm(lat, lon)	| geo point类型的字段到给定坐标的arc距离(单位是km)		|
+| doc['field_name'].geohashDistance(geohash)	| geo point类型的字段到给定geohash的距离(单位是miles)	|
+| doc['field_name'].geohashDistanceInKm(geohash)| geo point类型的字段到给定geohash的距离(单位是km)		|
+
+
+stored fields
+===
+
+执行脚本时也可以访问存储的字段(Stored)， 注意，因为他们不会被记载到内存，所以访问速度与访问document字段相比慢很多。 可以用`_fields['my_fields_name'].value`或`_fields['my_fields_name'].values`的形式来访问。   
+
+source field
+===
+
+执行脚本时也可以获取源字段(source)。 每个文档的源字段会被加载，解析，然后提供给脚本计算。 可以通过上下文的`_source`来访问源字段，例如`_source.obj2.obj1.fields3`。  
+
+mvel built in functions
+===
+
+以下是脚本中可以使用的内置函数:
+
+| Function  	| Description   											|
+| --------------|:----------------------------------------------------------|
+| time()   		| The current time in milliseconds.							|
+| sin(a)   		| Returns the trigonometric sine of an angle.				|
+| cos(a)  		| Returns the trigonometric cosine of an angle.				|
+| tan(a)  		| Returns the trigonometric tangent of an angle.			|
+| asin(a)  		| Returns the arc sine of a value.							|
+| acos(a)  		| Returns the arc cosine of a value.						|
+| atan(a) 		| Returns the arc tangent of a value.						|
+| toRadians(angdeg) | Converts an angle measured in degrees to an approximately equivalent angle measured in radians.	|
+| toDegrees(angrad) | Converts an angle measured in radians to an approximately equivalent angle measured in degrees.	|
+| exp(a) 		| Returns Euler’s number e raised to the power of value.	|
+| log(a) 		| Returns the natural logarithm (base e) of a value.		|
+| log10(a) 		| Returns the base 10 logarithm of a value.					|
+| sqrt(a) 		| Returns the correctly rounded positive square root of a value.	|
+| cbrt(a) 		| Returns the cube root of a double value.					|
+| IEEEremainder(f1, f2)	| Computes the remainder operation on two arguments as prescribed by the IEEE 754 standard.	|
+| ceil(a) 		| Returns the smallest (closest to negative infinity) value that is greater than or equal to the argument and is equal to a mathematical integer.	|
+| floor(a) 		| Returns the largest (closest to positive infinity) value that is less than or equal to the argument and is equal to a mathematical integer.		|
+| rint(a) 		| Returns the value that is closest in value to the argument and is equal to a mathematical integer.|
+| atan2(y, x)	| Returns the angle theta from the conversion of rectangular coordinates (x, y) to polar coordinates (r,theta).	|
+| pow(a, b) 	| Returns the value of the first argument raised to the power of the second argument. |
+| round(a)		| Returns the closest int to the argument.					|
+| random()		| Returns a random double value.							|
+| abs(a)		| Returns the absolute value of a value.					|
+| max(a, b)		| Returns the greater of two values.						|
+| min(a, b)		| Returns the smaller of two values.						|
+| ulp(d)		| Returns the size of an ulp of the argument.				|
+| signum(d)		| Returns the signum function of the argument.				|
+| sinh(x)		| Returns the hyperbolic sine of a value.					|
+| cosh(x)		| Returns the hyperbolic cosine of a value.					|
+| tanh(x)		| Returns the hyperbolic tangent of a value.				|
+| hypot(x, y)	| Returns sqrt(x2 + y2) without intermediate overflow or underflow.	|
+
+
+arithmetic precision in mvel
+===
+
+用基于MVEL的脚本做两个数的除法时， 引擎遵循java的默认规则， 这意味着如果你把两个整数相除(你可以在mapping里配置字段为integer类型)， 结果仍然是整数。 也就是说如果你在脚本中计算`1/num`这样的表达式， 如果num是整数8的话，结果是0而不是你可能期望的0.125，你需要明确用doubel来指定精度以获得期望的结果，用比如`1.0/num`。  
 
 thread pool
 ==
 
+为了提高线程管理和内存使用的效率， 一个节点会用到好几个线程池， 比较重要的是以下几个。  
 
+| Function  	| Description   											|
+| --------------|:----------------------------------------------------------|
+| index   		| 用于index/delete, 默认是`fixed`, 大小为`# of available processors`, queue_size是`200`		|
+| search   		| 用于count/search, 默认是`fixed`, 大小为`3x # of available processors`, queue_size是`1000`	|
+| suggest  		| 用于suggest, 默认是`fixed`, 大小为`# of available processors`, queue_size是`1000`			|
+| geting  		| 用于get, 默认是`fixed`, 大小为`# of available processors`, queue_size是`1000`				|
+| bulk  		| 用于bulk, 默认是`fixed`, 大小为`# of available processors`, queue_size是`50`				|
+| percolate  	| 用于percolate, 默认是`fixed`, 大小为`# of available processors`, queue_size是`1000`			|
+| warmer	  	| 用于warm-up, 默认是`scaling`, keep-alive是`5m `												|
+| refresh  		| 用于refresh, 默认是`fixed`, keep-alive是`5m `												|
+| percolate  	| 用于percolate, 默认是`fixed`, 大小为`# of available processors`, queue_size是`1000`			|
+
+可以通过设置线程池的类型以及参数来修改指定的线程池，下面的例子配置index线程池可以用更多的线程：  
+
+```
+threadpool:
+    index:
+        type: fixed
+        size: 30
+```
+
+注意， 可以通过Cluster Update Settings接口在运行期间修改线程池的设置。  
+
+thread pool types
+===
+
+以下是线程池的类型以及对应的参数。  
+
+cache
+
+cache线程池是没有大小限制的， 只要有请求就会启动一个线程， 下面是设置的例子:
+
+```
+threadpool:
+    index:
+        type: cached
+```
+
+fixed
+
+fixed线程池有固定的大小， 如果当前没有可用的线程时，就把请求放到一个队列里， 队列可以设置大小。  
+
+`size`参数设置线程的数量， 默认是cpu内核数乘以5。  
+
+`queue_size`设置存放挂起请求的队列的大小， 默认是-1， 即没有大小限制。  如果一个请求进来而队列已经满了的情况下， 这个请求会被舍弃。 
+
+配置例子如下:
+
+```
+threadpool:
+    index:
+        type: fixed
+        size: 30
+        queue_size: 1000
+```
+
+processors setting
+===
+
+ES会自动检测处理器的数量， 并且会自动根据处理器的数量来设置线程池。 有时候可能检测出来的处理器数量是错的， 这种情况下可以设置`processors` 来声明处理器的数量。  
+
+可以用带`os`参数的nodes info接口来检查自动检测出来的处理器数量。    
 
 thrift
 ==
 
+thrift传输模块允许通过thrift协议对外暴露REST接口， Thrift协议可以提供比http协议更好的性能。 因为thrift既提供了协议，也提供了传输的实现方式， 用起来应该很简单(尽管缺乏相关文档)。
+
+使用thrift需要安装[transport-thrift插件](https://github.com/elasticsearch/elasticsearch-transport-thrift) 。 
+
+[thrift schema](https://github.com/elasticsearch/elasticsearch-transport-thrift/blob/master/elasticsearch.thrift)可以用来生成thrift的客户端代码。  
+
+thrift的相关配置如下:  
+
+| Setting    	| Description   											|
+| --------------|:----------------------------------------------------------|
+| thrift.port   | 绑定的端口， 默认9500-9600									|
+| thrift.frame  | 默认-1,  即不分frame, 可以设置比较大的值来指定frame的大小(比如15mb)。|
+
 
 transport
 ==
+
+传输模块用于集群内节点间的内部通讯。 每次跨节点的调用都会用到transport模块(比如某个节点接受http GET请求，实际执行处理的是另一个持有数据的节点)。  
+
+transport机制是完全异步的， 即等待响应时不会阻塞线程， 异步通信的好处首先是解决了C10k问题， 另外也是scatter(broadcast)/gather操作(比如搜索)的方案。  
+
+tcp transport
+===
+
+TCP transport是用TCP实现传输模块， 允许如下设置:
+
+| Setting    					| Description   											|
+| ------------------------------|:----------------------------------------------------------|
+| transport.tcp.port    		| 绑定的端口范围， 默认9300-9400								|
+| transport.tcp.connect_timeout | socket链接的超时时间， 默认2s 								|
+| transport.tcp.compress 		| 设置为true可以启用压缩(LZF)， 默认是false。 					|
+
+
+tcp transport共享通用网络设置。  
+
+local transport
+===
+
+这在JVM内做集成测试时非常有用。 当使用`NodeBuilder#local(true)`时会自动启用。
+
+
